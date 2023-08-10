@@ -14,6 +14,7 @@ using HoloLensForCV;
 #endif
 
 using UnityEngine;
+using UnityEditor;
 using UnityEngine.UI;
 using UnityEngine.XR.WSA;
 using UnityEngine.XR.WSA.Input;
@@ -35,7 +36,7 @@ namespace ArUcoDetectionHoloLensUnity
     {
         private bool _isWorldAnchored = false;
 
-        public Text myText;
+        //public Text myText;
 
         public CvUtils.DeviceTypeUnity deviceType;
 
@@ -44,7 +45,7 @@ namespace ArUcoDetectionHoloLensUnity
         public CvUtils.ArUcoDictionaryName arUcoDictionaryName;
 
         // Params for aruco detection
-        // Marker size in meters: 0.08 cm
+        // Marker size in meters
         public float markerSize;
 
         /// <summary>
@@ -65,7 +66,10 @@ namespace ArUcoDetectionHoloLensUnity
 
         private bool _mediaFrameSourceGroupsStarted = false;
         private int _frameCount = 0;
-        public int skipFrames = 3;
+        public int skipFrames = 1;
+        public bool detected = false;
+
+        public LineRenderer arcRenderer;
 
 #if ENABLE_WINMD_SUPPORT
         // Enable winmd support to include winmd files. Will not
@@ -102,7 +106,7 @@ namespace ArUcoDetectionHoloLensUnity
         async void Start()
         {
             // Initialize gesture handler
-            InitializeHandler();
+            //InitializeHandler();
 
             // Start the media frame source groups.
             await StartHoloLensMediaFrameSourceGroups();
@@ -145,7 +149,17 @@ namespace ArUcoDetectionHoloLensUnity
                 UpdateArUcoDetections(detections);
 
                 _frameCount = 0;
+
+                if (detections.Count > 0){
+                    // check if message received from robot
+
+                    // draw regions where robots are detected
+                    DrawArcAroundMarker();
+                }
             }
+#endif
+#if UNITY_EDITOR
+            //DrawArcAroundMarker();
 #endif
         }
 
@@ -154,14 +168,13 @@ namespace ArUcoDetectionHoloLensUnity
             await StopHoloLensMediaFrameSourceGroup();
         }
 
-        #endregion
+#endregion
 
         async Task StartHoloLensMediaFrameSourceGroups()
         {
 #if ENABLE_WINMD_SUPPORT
             // Plugin doesn't work in the Unity editor
-            myText.text = "Initializing MediaFrameSourceGroups...";
-
+            //myText.text = "Initializing MediaFrameSourceGroups...";
             // PV
             Debug.Log("HoloLensForCVUnity.ArUcoDetection.StartHoloLensMediaFrameSourceGroup: Setting up sensor frame streamer");
             _sensorType = (SensorType)sensorTypePv;
@@ -199,14 +212,14 @@ namespace ArUcoDetectionHoloLensUnity
             _pvMediaFrameSourceGroup.Enable(_sensorType);
 
             // Start media frame source groups
-            myText.text = "Starting MediaFrameSourceGroups...";
+            //myText.text = "Starting MediaFrameSourceGroups...";
 
             // Photo video
             Debug.Log("HoloLensForCVUnity.ArUcoDetection.StartHoloLensMediaFrameSourceGroup: Starting the media frame source group");
             await _pvMediaFrameSourceGroup.StartAsync();
             _mediaFrameSourceGroupsStarted = true;
 
-            myText.text = "MediaFrameSourceGroups started...";
+            //myText.text = "MediaFrameSourceGroups started...";
 
             // Initialize the Unity coordinate system
             // Get pointer to Unity's spatial coordinate system
@@ -231,7 +244,7 @@ namespace ArUcoDetectionHoloLensUnity
 
         // Get the latest frame from hololens media
         // frame source group -- not needed
-#if ENABLE_WINMD_SUPPORT           
+#if ENABLE_WINMD_SUPPORT
         void UpdateArUcoDetections(IList<DetectedArUcoMarker> detections)
         {
             if (!_mediaFrameSourceGroupsStarted ||
@@ -264,6 +277,10 @@ namespace ArUcoDetectionHoloLensUnity
 
                 foreach (var detectedMarker in detections)
                 {
+                    // only detect marker 0 for the moment 
+                    if (detectedMarker.Id != 0)
+                        continue;
+
                     // Get pose from OpenCV and format for Unity
                     Vector3 position = CvUtils.Vec3FromFloat3(detectedMarker.Position);
                     position.y *= -1f;
@@ -279,6 +296,7 @@ namespace ArUcoDetectionHoloLensUnity
                         CvUtils.GetVectorFromMatrix(transformUnityWorld),
                         CvUtils.GetQuatFromMatrix(transformUnityWorld));
                 }
+                detected = true;
             }
             // If no markers in scene, anchor marker go to last position
             else
@@ -286,8 +304,10 @@ namespace ArUcoDetectionHoloLensUnity
                 // Add a world anchor to the attached gameobject
                 markerGo.AddComponent<WorldAnchor>();
                 _isWorldAnchored = true;
+
+                detected = false;
             }
-            myText.text = "Began streaming sensor frames. Double tap to end streaming.";
+            //myText.text = "Began streaming sensor frames. Double tap to end streaming.";
         }
 #endif
 
@@ -314,7 +334,7 @@ namespace ArUcoDetectionHoloLensUnity
             // Bool to indicate closing
             _mediaFrameSourceGroupsStarted = false;
 
-            myText.text = "Stopped streaming sensor frames. Okay to exit app.";
+            //myText.text = "Stopped streaming sensor frames. Okay to exit app.";
 #endif
         }
 
@@ -350,7 +370,7 @@ namespace ArUcoDetectionHoloLensUnity
         }
 #endif
 
-        #region TapGestureHandler
+        /*#region TapGestureHandler
         private void InitializeHandler()
         {
             // New recognizer class
@@ -380,7 +400,26 @@ namespace ArUcoDetectionHoloLensUnity
             _gestureRecognizer.StopCapturingGestures();
             _gestureRecognizer.Dispose();
         }
-        #endregion
+        #endregion*/
+
+        private void DrawArcAroundMarker(float angle = 180f, float radius = 1f)
+        {
+            int nbPos = (int)angle / 5;
+
+            Vector3[] positions;
+            positions = new Vector3[nbPos];
+            Vector3 axisX = markerGo.transform.right; 
+            Vector3 axisY = markerGo.transform.up; 
+
+            for (int i = 0; i < nbPos; i++) {
+                positions[i] = new Vector3(radius * Mathf.Cos((angle * i / (nbPos - 1)) * Mathf.Deg2Rad), radius * Mathf.Sin((angle * i / (nbPos - 1)) * Mathf.Deg2Rad), 0f);
+            }
+
+            arcRenderer.positionCount = nbPos;
+            arcRenderer.SetPositions(positions);
+            arcRenderer.startWidth = 0.005f;
+            arcRenderer.endWidth = 0.005f;
+        }
     }
 }
 
