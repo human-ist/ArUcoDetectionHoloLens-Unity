@@ -140,7 +140,7 @@ namespace ArUcoDetectionHoloLensUnity
 #if ENABLE_WINMD_SUPPORT
             _frameCount += 1;
 
-            // Predict every 3rd frame
+            // Predict every other frame
             if (_frameCount == skipFrames)
             {
                 var detections = await Task.Run(() => _pvMediaFrameSourceGroup.DetectArUcoMarkers(_sensorType));
@@ -154,12 +154,9 @@ namespace ArUcoDetectionHoloLensUnity
                     // check if message received from robot
 
                     // draw regions where robots are detected
-                    DrawArcAroundMarker();
+                    //DrawArcAroundMarker();
                 }
             }
-#endif
-#if UNITY_EDITOR
-            //DrawArcAroundMarker();
 #endif
         }
 
@@ -401,25 +398,6 @@ namespace ArUcoDetectionHoloLensUnity
             _gestureRecognizer.Dispose();
         }
         #endregion*/
-
-        private void DrawArcAroundMarker(float angle = 180f, float radius = 1f)
-        {
-            int nbPos = (int)angle / 5;
-
-            Vector3[] positions;
-            positions = new Vector3[nbPos];
-            Vector3 axisX = markerGo.transform.right; 
-            Vector3 axisY = markerGo.transform.up; 
-
-            for (int i = 0; i < nbPos; i++) {
-                positions[i] = new Vector3(radius * Mathf.Cos((angle * i / (nbPos - 1)) * Mathf.Deg2Rad), radius * Mathf.Sin((angle * i / (nbPos - 1)) * Mathf.Deg2Rad), 0f);
-            }
-
-            arcRenderer.positionCount = nbPos;
-            arcRenderer.SetPositions(positions);
-            arcRenderer.startWidth = 0.005f;
-            arcRenderer.endWidth = 0.005f;
-        }
     }
 }
 

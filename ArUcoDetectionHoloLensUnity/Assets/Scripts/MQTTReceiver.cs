@@ -15,7 +15,6 @@ public class MQTTReceiver : M2MqttUnityClient
     public string topicSubscribe = "#"; // topic to subscribe. !!! The multi-level wildcard # is used to subscribe to all the topics. Attention i if #, subscribe to all topics. Attention if MQTT is on data plan
     [Tooltip("Topics")]
     public string topicPublish = "robot/opendays"; // topic to publish
-    public string messagePublish = ""; // message to publish
     public string destinationTopicPublish = "robot/destination";
 
     [Tooltip("Set this to true to perform a testing cycle automatically on startup")]
@@ -23,12 +22,21 @@ public class MQTTReceiver : M2MqttUnityClient
 
     [Header("Gameobjects")]
     public GameObject connectionMessage;
+    public GameObject markerReference;
+    public GameObject robotObject;
+    public GameObject goalObject;
+    
+    [Header("Sensors")]
     public GameObject[] sensorFeedback;
-    public GameObject markerGo;
-    private const int SENSOR_THRESHOLD = 1000;
-    private const float MAX_RADIUS = 1.3f;
-
     public float[] sensor_positions;
+    private const int SENSOR_THRESHOLD = 1000;
+    private const float MAX_RADIUS = .08f; //.13f;
+
+    // navigation properties
+    private bool isDestinationSet = false;
+    private float time = 0.0f;
+    private const float MARKER_VALIDITY_THRESH = 0.05f;
+    private const float PUBLISH_TIME = 0.25f;
 
     //using C# Property GET/SET and event listener to reduce Update overhead in the controlled objects
     private string m_msg;
@@ -81,6 +89,7 @@ public class MQTTReceiver : M2MqttUnityClient
 
     public void Publish()
     {
+        string messagePublish = "test";
         client.Publish(topicPublish, System.Text.Encoding.UTF8.GetBytes(messagePublish), MqttMsgBase.QOS_LEVEL_EXACTLY_ONCE, false);
         Debug.Log("Published topic " +topicPublish + " with message " +messagePublish);
     }
@@ -105,7 +114,6 @@ public class MQTTReceiver : M2MqttUnityClient
     {
         base.OnConnecting();
         connectionMessage.GetComponent<Text>().text = "Connection state: CONNECTING";
-        //connectionMessage.GetComponent<TMPro.TextMeshPro>().text = "Connection state: CONNECTING";
     }
 
     protected override void OnConnected()
@@ -119,14 +127,12 @@ public class MQTTReceiver : M2MqttUnityClient
         }
 
         connectionMessage.GetComponent<Text>().text = "Connection state: CONNECTED";
-        //connectionMessage.GetComponent<TMPro.TextMeshPro>().text = "Connection state: CONNECTED";
     }
 
     protected override void OnConnectionFailed(string errorMessage)
     {
         Debug.Log("CONNECTION FAILED! " + errorMessage);
         connectionMessage.GetComponent<Text>().text = "Connection state: FAILED";
-        //connectionMessage.GetComponent<TMPro.TextMeshPro>().text = "Connection state: FAILED";
     }
 
     protected override void OnDisconnected()
@@ -134,14 +140,12 @@ public class MQTTReceiver : M2MqttUnityClient
         Debug.Log("Disconnected.");
         isConnected = false;
         connectionMessage.GetComponent<Text>().text = "Connection state: DISCONNECTED";
-        //connectionMessage.GetComponent<TMPro.TextMeshPro>().text = "Connection state: DISCONNECTED";
     }
 
     protected override void OnConnectionLost()
     {
         Debug.Log("CONNECTION LOST!");
         connectionMessage.GetComponent<Text>().text = "Connection state: CONNECTION LOST";
-        //connectionMessage.GetComponent<TMPro.TextMeshPro>().text = "Connection state: CONNECTION LOST";
     }
 
     protected override void SubscribeTopics()
@@ -182,6 +186,28 @@ public class MQTTReceiver : M2MqttUnityClient
     protected override void Update()
     {
         base.Update(); // call ProcessMqttEvents()
+
+        if (!isConnected)
+            return;
+
+        // publish every 0.25 secs to avoid spamming the robot
+        if (isDestinationSet && time >= PUBLISH_TIME)
+        {
+            Vector3 projectedRobot = new Vector3(robotObject.transform.position.x, 0.0f, robotObject.transform.position.z);
+            Vector3 projectedGoal = new Vector3(goalObject.transform.position.x, 0.0f, goalObject.transform.position.z);
+
+            Vector3 direction = projectedGoal - projectedRobot;
+            Vector3 robotForward = robotObject.transform.forward;
+            robotForward.y = 0.0f;
+
+            PublishDestination("{'ValidDestination': 1, " +
+                "'Heading': " + Vector3.Angle(robotForward, direction).ToString() + 
+                ", 'Distance': " + Vector3.Magnitude(direction).ToString() + "}");
+
+            time = 0.0f;
+        }
+
+        time += Time.deltaTime;
     }
 
     private void OnDestroy()
@@ -203,19 +229,23 @@ public class MQTTReceiver : M2MqttUnityClient
         {
             ProcessSensorFeedback(msg);
         }
+        else if (topic == "robot/goal_reached")
+        {
+            RemoveDestinationMarker();
+        }
     }
 
     private void ProcessSensorFeedback(string msg)
     {
-        int[] sensor_values = Array.ConvertAll(msg.Split(' '), int.Parse);
+        Debug.Log("sensor values is: " + msg);
+        float[] sensor_values = Array.ConvertAll(msg.Split(' '), float.Parse);
         Color color = new Color();
         float radius = MAX_RADIUS;
 
         for (int i = 0; i < sensor_values.Length; i++)
         {
-            int threshold = sensor_values[i] / SENSOR_THRESHOLD;
-            Debug.Log("Threshold is: " + threshold);
-            radius = MAX_RADIUS - (threshold-1)*.1f;
+            int threshold = (int) sensor_values[i] / SENSOR_THRESHOLD;
+            radius = MAX_RADIUS - (threshold-1)*.01f;
 
             switch (threshold)
             {
@@ -256,21 +286,46 @@ public class MQTTReceiver : M2MqttUnityClient
         float sensorAbsoluteAngle = frontAngle + sensorAngle;
         float startAngle = sensorAbsoluteAngle - fov/2;
 
+        // positions for the linerenderer
         Vector3[] positions;
         positions = new Vector3[nbPos];
-        Vector3 axisX = markerGo.transform.right;
-        Vector3 axisY = markerGo.transform.up;
+        Vector3 axisX = markerReference.transform.right;
+        Vector3 axisY = markerReference.transform.up;
+        
+        // origin references
+        Vector3 origin = markerReference.transform.position;
 
         for (int i = 0; i < nbPos; i++)
         {
-            positions[i] = new Vector3(radius * Mathf.Cos((startAngle + fov * i / (nbPos - 1)) * Mathf.Deg2Rad), radius * Mathf.Sin((startAngle + fov * i / (nbPos - 1)) * Mathf.Deg2Rad), 0f);
+            positions[i] = origin + radius * Mathf.Cos((startAngle + fov * i / (nbPos - 1)) * Mathf.Deg2Rad) * axisX 
+                + radius * Mathf.Sin((startAngle + fov * i / (nbPos - 1)) * Mathf.Deg2Rad) * axisY;
         }
 
         sensorRenderer.positionCount = nbPos;
         sensorRenderer.SetPositions(positions);
-        sensorRenderer.startWidth = 0.05f;
-        sensorRenderer.endWidth = 0.05f;
+        sensorRenderer.startWidth = 0.01f;
+        sensorRenderer.endWidth = 0.01f;
         sensorRenderer.startColor = color;
         sensorRenderer.endColor = color;
+    }
+
+    public void SetDestinationMarker()
+    {
+        if (CheckDestinationMarkerValidity())
+            isDestinationSet = true;
+    }
+
+    public void RemoveDestinationMarker()
+    {
+        isDestinationSet = false;
+        PublishDestination("{'ValidDestination': 0, " + "'Heading': 0, " + "'Distance': 0}");
+    }
+
+    private bool CheckDestinationMarkerValidity()
+    {
+        if (Mathf.Abs(robotObject.transform.position.y - goalObject.transform.position.y) <= MARKER_VALIDITY_THRESH)
+            return true;
+
+        return false;
     }
 }
