@@ -22,6 +22,9 @@ public class MQTTReceiver : M2MqttUnityClient
 
     [Header("Gameobjects")]
     public GameObject connectionMessage;
+    public GameObject sensorInformation;
+    public GameObject headingInformation;
+    public GameObject distanceInformation;
     public GameObject markerReference;
     public GameObject robotObject;
     public GameObject goalObject;
@@ -36,7 +39,7 @@ public class MQTTReceiver : M2MqttUnityClient
     private bool isDestinationSet = false;
     private float time = 0.0f;
     private const float MARKER_VALIDITY_THRESH = 0.05f;
-    private const float PUBLISH_TIME = 0.25f;
+    private const float PUBLISH_TIME = 0.2f;
 
     //using C# Property GET/SET and event listener to reduce Update overhead in the controlled objects
     private string m_msg;
@@ -190,19 +193,23 @@ public class MQTTReceiver : M2MqttUnityClient
         if (!isConnected)
             return;
 
-        // publish every 0.25 secs to avoid spamming the robot
+        // publish every 0.2 secs to avoid spamming the robot
         if (isDestinationSet && time >= PUBLISH_TIME)
         {
             Vector3 projectedRobot = new Vector3(robotObject.transform.position.x, 0.0f, robotObject.transform.position.z);
             Vector3 projectedGoal = new Vector3(goalObject.transform.position.x, 0.0f, goalObject.transform.position.z);
 
             Vector3 direction = projectedGoal - projectedRobot;
-            Vector3 robotForward = robotObject.transform.forward;
+            Vector3 robotForward = robotObject.transform.up;
             robotForward.y = 0.0f;
 
             PublishDestination("{'ValidDestination': 1, " +
-                "'Heading': " + Vector3.Angle(robotForward, direction).ToString() + 
+                "'Heading': " + Vector3.SignedAngle(robotForward, direction, Vector3.up).ToString() + 
                 ", 'Distance': " + Vector3.Magnitude(direction).ToString() + "}");
+
+            headingInformation.GetComponent<Text>().text = "Heading: " + Vector3.SignedAngle(robotForward, direction, Vector3.up).ToString("F2") + " deg";
+            float magnitude_cm = (Vector3.Magnitude(direction) * 100) -2f;
+            distanceInformation.GetComponent<Text>().text = "Distance: " + magnitude_cm.ToString("F2") + " cm";
 
             time = 0.0f;
         }
@@ -241,10 +248,56 @@ public class MQTTReceiver : M2MqttUnityClient
         float[] sensor_values = Array.ConvertAll(msg.Split(' '), float.Parse);
         Color color = new Color();
         float radius = MAX_RADIUS;
+        sensorInformation.GetComponent<Text>().text = "Prox sensor: " + sensor_values[0].ToString();
 
         for (int i = 0; i < sensor_values.Length; i++)
         {
-            int threshold = (int) sensor_values[i] / SENSOR_THRESHOLD;
+            /*
+             * Due to the imprecision of the proximity sensors, the thresholds are hard coded
+             */
+            int sensor_value = (int)sensor_values[i];
+            
+            if (sensor_value < 50)
+            {
+                // don't render
+                sensorFeedback[i].gameObject.SetActive(false);
+                continue;
+            }
+            else if ((sensor_value >= 50) && (sensor_value < 200))
+            {
+                // set color to green
+                color = Color.green;
+                sensorFeedback[i].gameObject.SetActive(true);
+                radius = 0.08f;
+            }
+            else if ((sensor_value >= 200) && (sensor_value < 500))
+            {
+                // set color to yellow
+                color = Color.yellow;
+                sensorFeedback[i].gameObject.SetActive(true);
+                radius = 0.07f;
+            }
+            else if ((sensor_value >= 500) && (sensor_value < 1000))
+            {
+                // set color to orange
+                color = new Color(0.92f, 0.584f, 0.196f, 1f);
+                sensorFeedback[i].gameObject.SetActive(true);
+                radius = 0.06f;
+            }
+            else
+            {
+                // set color to red
+                color = Color.red;
+                sensorFeedback[i].gameObject.SetActive(true);
+                radius = 0.05f;
+            }
+            
+            RenderSensorValue(sensor_positions[i], radius, color, sensorFeedback[i].gameObject.GetComponent<LineRenderer>());
+
+            /*
+             * Due to the imprecision of the proximity sensors, the following is no longer used
+             */
+            /*int threshold = (int) sensor_values[i] / SENSOR_THRESHOLD;
             radius = MAX_RADIUS - (threshold-1)*.01f;
 
             switch (threshold)
@@ -276,7 +329,7 @@ public class MQTTReceiver : M2MqttUnityClient
             }
 
             if (threshold > 0)
-                RenderSensorValue(sensor_positions[i], radius, color, sensorFeedback[i].gameObject.GetComponent<LineRenderer>());
+                RenderSensorValue(sensor_positions[i], radius, color, sensorFeedback[i].gameObject.GetComponent<LineRenderer>());*/
         }
     }
 
