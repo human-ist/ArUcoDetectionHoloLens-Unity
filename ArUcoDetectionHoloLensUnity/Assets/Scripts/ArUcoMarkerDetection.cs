@@ -66,7 +66,7 @@ namespace ArUcoDetectionHoloLensUnity
 
         private bool _mediaFrameSourceGroupsStarted = false;
         private int _frameCount = 0;
-        public int skipFrames = 1;
+        public int skipFrames = 5;
         public bool detected = false;
 
         public LineRenderer arcRenderer;
