@@ -176,6 +176,8 @@ namespace M2MqttUnity
         /// </summary>
         protected virtual void Start()
         {
+            brokerAddress = GameObject.FindWithTag("Player").GetComponent<PlayerPrefsManager>().LoadIpAddress();
+
             if (autoConnect)
             {
                 Connect();

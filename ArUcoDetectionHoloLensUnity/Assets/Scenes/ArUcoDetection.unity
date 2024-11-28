@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 0}
-  m_IndirectSpecularColor: {r: 0.44657826, g: 0.49641263, b: 0.57481676, a: 1}
+  m_IndirectSpecularColor: {r: 0.44657898, g: 0.4964133, b: 0.5748178, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -889,7 +889,7 @@ PrefabInstance:
     - target: {fileID: 948697719170404064, guid: 2e5d73686abb4b440940c1d00e105576,
         type: 3}
       propertyPath: m_LocalPosition.y
-      value: 0
+      value: 1.51
       objectReference: {fileID: 0}
     - target: {fileID: 948697719170404064, guid: 2e5d73686abb4b440940c1d00e105576,
         type: 3}
@@ -2641,7 +2641,7 @@ MonoBehaviour:
   certificateName: 
   connectionDelay: 500
   timeoutOnConnection: 30000
-  autoConnect: 1
+  autoConnect: 0
   mqttUserName: humanist
   mqttPassword: humanist
   topicSubscribe: '#'
@@ -3086,3 +3086,72 @@ Transform:
     type: 3}
   m_PrefabInstance: {fileID: 4588276305247382739}
   m_PrefabAsset: {fileID: 0}
+--- !u!1001 &9039924476172298075
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 9039924475719231834, guid: c108457f56334c4488fa61ed86b0beea,
+        type: 3}
+      propertyPath: m_Name
+      value: NearMenuSettings
+      objectReference: {fileID: 0}
+    - target: {fileID: 9039924475719231837, guid: c108457f56334c4488fa61ed86b0beea,
+        type: 3}
+      propertyPath: m_RootOrder
+      value: 9
+      objectReference: {fileID: 0}
+    - target: {fileID: 9039924475719231837, guid: c108457f56334c4488fa61ed86b0beea,
+        type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 9039924475719231837, guid: c108457f56334c4488fa61ed86b0beea,
+        type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 9039924475719231837, guid: c108457f56334c4488fa61ed86b0beea,
+        type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0.3
+      objectReference: {fileID: 0}
+    - target: {fileID: 9039924475719231837, guid: c108457f56334c4488fa61ed86b0beea,
+        type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 9039924475719231837, guid: c108457f56334c4488fa61ed86b0beea,
+        type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 9039924475719231837, guid: c108457f56334c4488fa61ed86b0beea,
+        type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 9039924475719231837, guid: c108457f56334c4488fa61ed86b0beea,
+        type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 9039924475719231837, guid: c108457f56334c4488fa61ed86b0beea,
+        type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 9039924475719231837, guid: c108457f56334c4488fa61ed86b0beea,
+        type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 9039924475719231837, guid: c108457f56334c4488fa61ed86b0beea,
+        type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: c108457f56334c4488fa61ed86b0beea, type: 3}
